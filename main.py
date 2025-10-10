@@ -82,7 +82,7 @@ async def main():
             # NAVEGAÇÃO E DOWNLOAD 1
             await page.goto("https://spx.shopee.com.br/#/hubLinehaulTrips/trip")
             await page.wait_for_timeout(8000)
-            await page.locator('xpath=/html[1]/body[1]/div[1]/div[1]/div[2]/div[2]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[4]/span[1]').click()
+            await page.get_by_role("button", name="Baixar").nth(0).click()
             await page.get_by_role("button", name="Exportar").nth(0).click()
             await page.wait_for_timeout(240000)
 
@@ -90,7 +90,7 @@ async def main():
             await page.goto("https://spx.shopee.com.br/#/taskCenter/exportTaskCenter")
             await page.wait_for_timeout(8000)
             async with page.expect_download() as download_info:
-                await page.get_by_role("button", name="Baixar").nth(0).click()
+                await page.get_by_role("button", name="Finalizado").nth(0).click()
             download = await download_info.value
             download_path = os.path.join(DOWNLOAD_DIR, download.suggested_filename)
             await download.save_as(download_path)
