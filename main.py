@@ -139,13 +139,27 @@ async def main():
             download = await download_info.value  
             download_path = os.path.join(DOWNLOAD_DIR, download.suggested_filename)  
   
-            # ✅ VERIFICAÇÃO: se é ZIP, extrai o CSV dentro  
-            print(f"[INFO] 📥 Arquivo sugerido: {download.suggested_filename}")  
+            # ✅ SALVA O ARQUIVO ANTES DE TENTAR EXTRAIR  
+            print(f"[INFO] 📥 Salvando arquivo: {download_path}")  
+            await download.save_as(download_path)  
   
-            # ✅ Verifica se é ZIP  
+            # ✅ VERIFICA SE O ARQUIVO FOI SALVO  
+            if not os.path.exists(download_path):  
+                print(f"[ERROR] ❌ Arquivo não foi salvo: {download_path}")  
+                return  
+  
+            print(f"[INFO] ✅ Arquivo salvo com sucesso: {download_path}")  
+  
+            # ✅ VERIFICAÇÃO: se é ZIP, extrai o CSV dentro  
             if download.suggested_filename.lower().endswith('.zip'):  
                 print("[INFO] 📦 Arquivo é ZIP. Iniciando extração...")  
+  
                 try:  
+                    # ✅ Verifica se o arquivo ZIP existe  
+                    if not os.path.exists(download_path):  
+                        print(f"[ERROR] ❌ Arquivo ZIP não encontrado: {download_path}")  
+                        return  
+  
                     with zipfile.ZipFile(download_path, 'r') as zip_ref:  
                         # Procura um arquivo CSV dentro do ZIP  
                         csv_files = [f for f in zip_ref.namelist() if f.lower().endswith('.csv')]  
@@ -197,9 +211,7 @@ async def main():
                         print(f"[INFO] 📝 Salvando conteúdo como: {txt_path}")  
                         return  
   
-                    # Salva o arquivo  
-                    await download.save_as(download_path)  
-  
+                    # Salva o arquivo (já feito acima)  
                     # Renomeia  
                     new_file_path = rename_downloaded_file(DOWNLOAD_DIR, download_path)  
                     if not new_file_path:  
@@ -224,4 +236,4 @@ async def main():
             print("[OK] ✅ Script finalizado.")  
   
 if __name__ == "__main__":  
-    asyncio.run(main())
+    asyncio.run(main())  
