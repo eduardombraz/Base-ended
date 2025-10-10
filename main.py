@@ -3,6 +3,7 @@ from playwright.async_api import async_playwright
 from datetime import datetime  
 import os  
 import shutil  
+import zipfile  
 import gspread  
 import pandas as pd  
 from oauth2client.service_account import ServiceAccountCredentials  
@@ -138,46 +139,82 @@ async def main():
             download = await download_info.value  
             download_path = os.path.join(DOWNLOAD_DIR, download.suggested_filename)  
   
-            # ✅ VERIFICAÇÃO: antes de salvar, leia o conteúdo binário  
+            # ✅ VERIFICAÇÃO: se é ZIP, extrai o CSV dentro  
             print(f"[INFO] 📥 Arquivo sugerido: {download.suggested_filename}")  
-            print(f"[INFO] 📦 Tamanho: {download.size} bytes")  
   
-            try:  
-                # Lê o conteúdo binário  
-                content = await download.bytes()  
-                text_content = content.decode('latin1', errors='ignore')  # tenta ler como texto  
+            # ✅ Verifica se é ZIP  
+            if download.suggested_filename.lower().endswith('.zip'):  
+                print("[INFO] 📦 Arquivo é ZIP. Iniciando extração...")  
+                try:  
+                    with zipfile.ZipFile(download_path, 'r') as zip_ref:  
+                        # Procura um arquivo CSV dentro do ZIP  
+                        csv_files = [f for f in zip_ref.namelist() if f.lower().endswith('.csv')]  
+                        if not csv_files:  
+                            print("[ERROR] ❌ Nenhum arquivo CSV encontrado dentro do ZIP.")  
+                            return  
+                        # Usa o primeiro CSV encontrado  
+                        csv_filename = csv_files[0]  
+                        print(f"[INFO] ✅ Encontrado CSV no ZIP: {csv_filename}")  
   
-                # Verifica se parece ser CSV (tem linhas com vírgulas)  
-                if any(',' in line for line in text_content.split('\n')[:5]):  
-                    print("[OK] ✅ Arquivo parece ser CSV válido.")  
-                else:  
-                    print("[WARNING] ⚠️ Arquivo NÃO parece ser CSV. Pode ser PDF ou erro.")  
-                    # Salva como .txt para análise  
-                    txt_path = f"/tmp/{download.suggested_filename}.txt"  
-                    with open(txt_path, "wb") as f:  
-                        f.write(content)  
-                    print(f"[INFO] 📝 Salvando conteúdo como: {txt_path}")  
-                    # Não continue com o CSV, mas ainda salve o arquivo  
+                        # Extrai o CSV para /tmp  
+                        extracted_path = os.path.join(DOWNLOAD_DIR, csv_filename)  
+                        with zip_ref.open(csv_filename) as csv_file:  
+                            with open(extracted_path, 'wb') as f:  
+                                f.write(csv_file.read())  
+                        print(f"[INFO] ✅ CSV extraído para: {extracted_path}")  
+  
+                        # Renomeia o CSV extraído  
+                        new_file_path = rename_downloaded_file(DOWNLOAD_DIR, extracted_path)  
+                        if not new_file_path:  
+                            print("[ERROR] ❌ Falha ao renomear o CSV extraído.")  
+                            return  
+  
+                        # Atualiza Google Sheets  
+                        print("[INFO] 🔄 Atualizando Google Sheets...")  
+                        update_packing_google_sheets(new_file_path)  
+  
+                        print("[OK] ✅ Dados atualizados com sucesso.")  
+  
+                except Exception as e:  
+                    print(f"[ERROR] ❌ Erro ao extrair ZIP: {e}")  
+                    return  
+            else:  
+                # ✅ Se não for ZIP, trata como CSV normal  
+                print("[INFO] 📄 Arquivo não é ZIP. Tratando como CSV direto.")  
+  
+                # ✅ Verifica se é CSV (com conteúdo)  
+                try:  
+                    content = await download.bytes()  
+                    text_content = content.decode('latin1', errors='ignore')  
+  
+                    if any(',' in line for line in text_content.split('\n')[:5]):  
+                        print("[OK] ✅ Arquivo parece ser CSV válido.")  
+                    else:  
+                        print("[WARNING] ⚠️ Arquivo NÃO parece ser CSV. Pode ser PDF ou erro.")  
+                        txt_path = f"/tmp/{download.suggested_filename}.txt"  
+                        with open(txt_path, "wb") as f:  
+                            f.write(content)  
+                        print(f"[INFO] 📝 Salvando conteúdo como: {txt_path}")  
+                        return  
+  
+                    # Salva o arquivo  
                     await download.save_as(download_path)  
-                    print(f"[INFO] ✅ Arquivo salvo como: {download_path}")  
-                    # Continue, mas avise  
-                await download.save_as(download_path)  
   
-            except Exception as e:  
-                print(f"[ERROR] ❌ Erro ao ler o conteúdo do download: {e}")  
-                return  
+                    # Renomeia  
+                    new_file_path = rename_downloaded_file(DOWNLOAD_DIR, download_path)  
+                    if not new_file_path:  
+                        print("[ERROR] ❌ Falha ao renomear o arquivo.")  
+                        return  
   
-            # Renomear  
-            new_file_path = rename_downloaded_file(DOWNLOAD_DIR, download_path)  
-            if not new_file_path:  
-                print("[ERROR] ❌ Falha ao renomear o arquivo.")  
-                return  
+                    # Atualiza Google Sheets  
+                    print("[INFO] 🔄 Atualizando Google Sheets...")  
+                    update_packing_google_sheets(new_file_path)  
   
-            # Atualizar Google Sheets  
-            print("[INFO] 🔄 Atualizando Google Sheets...")  
-            update_packing_google_sheets(new_file_path)  
+                    print("[OK] ✅ Dados atualizados com sucesso.")  
   
-            print("[OK] ✅ Dados atualizados com sucesso.")  
+                except Exception as e:  
+                    print(f"[ERROR] ❌ Erro ao processar arquivo: {e}")  
+                    return  
   
         except Exception as e:  
             print(f"[ERROR] ❌ Erro durante o processo: {e}")  
@@ -187,4 +224,4 @@ async def main():
             print("[OK] ✅ Script finalizado.")  
   
 if __name__ == "__main__":  
-    asyncio.run(main())  
+    asyncio.run(main())
