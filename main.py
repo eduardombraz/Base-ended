@@ -15,18 +15,18 @@ DOWNLOAD_DIR = "/tmp"
 # ==============================  
 def rename_downloaded_file(download_dir, download_path):  
     try:  
-        print("[INFO] 📥 Iniciando renomeação do arquivo baixado...")  
+        print("🔹 [STEP 1] 📥 Iniciando renomeação do arquivo baixado...")  
         current_hour = datetime.now().strftime("%H")  
         new_file_name = f"PROD-{current_hour}.csv"  
         new_file_path = os.path.join(download_dir, new_file_name)  
         if os.path.exists(new_file_path):  
-            print(f"[INFO] 🗑️ Removendo arquivo antigo: {new_file_path}")  
+            print(f"🔹 [STEP 1] 🗑️ Removendo arquivo antigo: {new_file_path}")  
             os.remove(new_file_path)  
         shutil.move(download_path, new_file_path)  
-        print(f"[OK] ✅ Arquivo salvo como: {new_file_path}")  
+        print(f"🔹 [STEP 1] ✅ Arquivo salvo como: {new_file_path}")  
         return new_file_path  
     except Exception as e:  
-        print(f"[ERROR] ❌ Erro ao renomear o arquivo: {e}")  
+        print(f"🔹 [STEP 1] ❌ Erro ao renomear o arquivo: {e}")  
         return None  
   
   
@@ -35,22 +35,22 @@ def rename_downloaded_file(download_dir, download_path):
 # ==============================  
 def update_packing_google_sheets(csv_file_path):  
     try:  
-        print(f"[INFO] 📥 Lendo o arquivo CSV: {csv_file_path}")  
+        print("🔹 [STEP 2] 📥 Lendo o arquivo CSV...")  
         if not os.path.exists(csv_file_path):  
-            print(f"[ERROR] ❌ Arquivo {csv_file_path} não encontrado.")  
+            print(f"🔹 [STEP 2] ❌ Arquivo {csv_file_path} não encontrado.")  
             return  
   
-        print("[INFO] 🔐 Autenticando com Google Sheets...")  
+        print("🔹 [STEP 2] 🔐 Autenticando com Google Sheets...")  
         scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]  
         creds = ServiceAccountCredentials.from_json_keyfile_name("hxh.json", scope)  
         client = gspread.authorize(creds)  
   
-        print("[INFO] 📊 Abrindo planilha no Google Sheets...")  
+        print("🔹 [STEP 2] 📊 Abrindo planilha no Google Sheets...")  
         sheet_url = "https://docs.google.com/spreadsheets/d/1LZ8WUrgN36Hk39f7qDrsRwvvIy1tRXLVbl3-wSQn-Pc/edit?gid=734921183#gid=734921183"  
         sheet1 = client.open_by_url(sheet_url)  
         worksheet1 = sheet1.worksheet("Base Ended")  
   
-        print("[INFO] 📥 Lendo CSV com codificação robusta...")  
+        print("🔹 [STEP 2] 📥 Lendo CSV com codificação robusta...")  
         df = pd.read_csv(  
             csv_file_path,  
             encoding='latin1',  
@@ -61,31 +61,31 @@ def update_packing_google_sheets(csv_file_path):
         ).fillna("")  
   
         if df.empty:  
-            print("[WARNING] ⚠️ O CSV está vazio após o processamento. Verifique o arquivo.")  
+            print("🔹 [STEP 2] ⚠️ O CSV está vazio após o processamento. Verifique o arquivo.")  
             return  
   
-        print(f"[INFO] ✅ {len(df)} linhas e {len(df.columns)} colunas carregadas com sucesso.")  
+        print(f"🔹 [STEP 2] ✅ {len(df)} linhas e {len(df.columns)} colunas carregadas com sucesso.")  
   
-        print("[INFO] 🗑️ Limpando a aba 'Base Ended'...")  
+        print("🔹 [STEP 2] 🗑️ Limpando a aba 'Base Ended'...")  
         worksheet1.clear()  
   
-        print("[INFO] 📤 Enviando dados para o Google Sheets...")  
+        print("🔹 [STEP 2] 📤 Enviando dados para o Google Sheets...")  
         worksheet1.update([df.columns.values.tolist()] + df.values.tolist())  
-        print(f"[OK] ✅ Dados enviados com sucesso para a aba 'Base Ended'.")  
+        print("🔹 [STEP 2] ✅ Dados enviados com sucesso para a aba 'Base Ended'.")  
   
     except Exception as e:  
-        print(f"[ERROR] ❌ Erro durante o processo: {e}")  
+        print(f"🔹 [STEP 2] ❌ Erro durante o processo: {e}")  
   
   
 # ==============================  
 # Fluxo principal Playwright  
 # ==============================  
 async def main():          
-    print("[INFO] 🚀 Iniciando o script de atualização do SPX")  
+    print("🚀 [START] Iniciando o script de atualização do SPX")  
     os.makedirs(DOWNLOAD_DIR, exist_ok=True)  
   
     async with async_playwright() as p:  
-        print("[INFO] 🖥️ Iniciando navegador Chromium...")  
+        print("🖥️  [STEP 0] 🖥️ Iniciando navegador Chromium...")  
         browser = await p.chromium.launch(  
             headless=False,   
             args=["--no-sandbox", "--disable-dev-shm-usage", "--window-size=1920,1080"]  
@@ -94,107 +94,107 @@ async def main():
         page = await context.new_page()  
   
         try:  
-            print("[INFO] 🌐 Navegando para o login do SPX...")  
+            print("🌐 [STEP 1] 🌐 Navegando para o login do SPX...")  
             await page.goto("https://spx.shopee.com.br/")  
             await page.wait_for_selector('xpath=//*[@placeholder="Ops ID"]', timeout=15000)  
-            print("[INFO] ✅ Página de login carregada.")  
+            print("✅ [STEP 1] Página de login carregada.")  
   
-            print("[INFO] 🔐 Fazendo login...")  
+            print("🔐 [STEP 2] 🔐 Fazendo login...")  
             await page.locator('xpath=//*[@placeholder="Ops ID"]').fill('Ops115950')  
             await page.locator('xpath=//*[@placeholder="Senha"]').fill('@Shopee123')  
             await page.locator(  
                 'xpath=/html/body/div[1]/div/div[2]/div/div/div[1]/div[3]/form/div/div/button'  
             ).click()  
             await page.wait_for_timeout(15000)  
-            print("[INFO] ✅ Login realizado com sucesso.")  
+            print("✅ [STEP 2] Login realizado com sucesso.")  
   
             try:  
                 await page.locator('.ssc-dialog-close').click(timeout=5000)  
-                print("[INFO] ✅ Pop-up fechado.")  
+                print("✅ [STEP 2] Pop-up fechado.")  
             except:  
-                print("[INFO] 🚫 Nenhum pop-up foi encontrado. Pressionando Esc.")  
+                print("🚫 [STEP 2] Nenhum pop-up foi encontrado. Pressionando Esc.")  
                 await page.keyboard.press("Escape")  
   
-            # NAVEGAÇÃO E DOWNLOAD 1  
-            print("[INFO] 📂 Navegando para 'Hub Linehaul Trips'...")  
+            print("📂 [STEP 3] 📂 Navegando para 'Hub Linehaul Trips'...")  
             await page.goto("https://spx.shopee.com.br/#/hubLinehaulTrips/trip")  
             await page.wait_for_timeout(8000)  
   
-            print("[INFO] 📊 Clicando no botão 'Exportar'...")  
+            print("📊 [STEP 3] 📊 Clicando no botão 'Exportar'...")  
             await page.locator(  
                 'xpath=/html[1]/body[1]/div[1]/div[1]/div[2]/div[2]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[4]/span[1]'  
             ).click()  
             await page.get_by_role("button", name="Exportar").nth(0).click()  
             await page.wait_for_timeout(240000)  
-            print("[INFO] 📥 Exportação iniciada. Aguardando 4 minutos...")  
+            print("⏳ [STEP 3] Exportação iniciada. Aguardando 4 minutos...")  
   
-            # 👉 Botão de download 1  
-            print("[INFO] 📥 Navegando para a aba de exportação de tarefas...")  
+            print("📥 [STEP 4] 📥 Navegando para a aba de exportação de tarefas...")  
             await page.goto("https://spx.shopee.com.br/#/taskCenter/exportTaskCenter")  
             await page.wait_for_timeout(8000)  
   
-            print("[INFO] 📥 Iniciando download do arquivo...")  
+            print("📥 [STEP 4] 📥 Iniciando download do arquivo...")  
             async with page.expect_download() as download_info:  
                 await page.get_by_role("button", name="Baixar").nth(0).click()  
             download = await download_info.value  
             download_path = os.path.join(DOWNLOAD_DIR, download.suggested_filename)  
   
+            print(f"📦 [STEP 4] 📥 Arquivo sugerido: {download.suggested_filename}")  
+            print(f"💾 [STEP 4] 📥 Salvando arquivo: {download_path}")  
+  
             # ✅ SALVA O ARQUIVO ANTES DE TENTAR EXTRAIR  
-            print(f"[INFO] 📥 Salvando arquivo: {download_path}")  
             await download.save_as(download_path)  
   
             # ✅ VERIFICA SE O ARQUIVO FOI SALVO  
             if not os.path.exists(download_path):  
-                print(f"[ERROR] ❌ Arquivo não foi salvo: {download_path}")  
+                print(f"❌ [STEP 4] ❌ Arquivo não foi salvo: {download_path}")  
                 return  
   
-            print(f"[INFO] ✅ Arquivo salvo com sucesso: {download_path}")  
+            print(f"✅ [STEP 4] ✅ Arquivo salvo com sucesso: {download_path}")  
   
             # ✅ VERIFICAÇÃO: se é ZIP, extrai o CSV dentro  
             if download.suggested_filename.lower().endswith('.zip'):  
-                print("[INFO] 📦 Arquivo é ZIP. Iniciando extração...")  
+                print("📦 [STEP 5] 📦 Arquivo é ZIP. Iniciando extração...")  
   
                 try:  
                     # ✅ Verifica se o arquivo ZIP existe  
                     if not os.path.exists(download_path):  
-                        print(f"[ERROR] ❌ Arquivo ZIP não encontrado: {download_path}")  
+                        print(f"❌ [STEP 5] ❌ Arquivo ZIP não encontrado: {download_path}")  
                         return  
   
                     with zipfile.ZipFile(download_path, 'r') as zip_ref:  
                         # Procura um arquivo CSV dentro do ZIP  
                         csv_files = [f for f in zip_ref.namelist() if f.lower().endswith('.csv')]  
                         if not csv_files:  
-                            print("[ERROR] ❌ Nenhum arquivo CSV encontrado dentro do ZIP.")  
+                            print("❌ [STEP 5] ❌ Nenhum arquivo CSV encontrado dentro do ZIP.")  
                             return  
                         # Usa o primeiro CSV encontrado  
                         csv_filename = csv_files[0]  
-                        print(f"[INFO] ✅ Encontrado CSV no ZIP: {csv_filename}")  
+                        print(f"✅ [STEP 5] ✅ Encontrado CSV no ZIP: {csv_filename}")  
   
                         # Extrai o CSV para /tmp  
                         extracted_path = os.path.join(DOWNLOAD_DIR, csv_filename)  
                         with zip_ref.open(csv_filename) as csv_file:  
                             with open(extracted_path, 'wb') as f:  
                                 f.write(csv_file.read())  
-                        print(f"[INFO] ✅ CSV extraído para: {extracted_path}")  
+                        print(f"✅ [STEP 5] ✅ CSV extraído para: {extracted_path}")  
   
                         # Renomeia o CSV extraído  
                         new_file_path = rename_downloaded_file(DOWNLOAD_DIR, extracted_path)  
                         if not new_file_path:  
-                            print("[ERROR] ❌ Falha ao renomear o CSV extraído.")  
+                            print("❌ [STEP 5] ❌ Falha ao renomear o CSV extraído.")  
                             return  
   
                         # Atualiza Google Sheets  
-                        print("[INFO] 🔄 Atualizando Google Sheets...")  
+                        print("🔄 [STEP 6] 🔄 Atualizando Google Sheets...")  
                         update_packing_google_sheets(new_file_path)  
   
-                        print("[OK] ✅ Dados atualizados com sucesso.")  
+                        print("✅ [STEP 6] ✅ Dados atualizados com sucesso.")  
   
                 except Exception as e:  
-                    print(f"[ERROR] ❌ Erro ao extrair ZIP: {e}")  
+                    print(f"❌ [STEP 5] ❌ Erro ao extrair ZIP: {e}")  
                     return  
             else:  
                 # ✅ Se não for ZIP, trata como CSV normal  
-                print("[INFO] 📄 Arquivo não é ZIP. Tratando como CSV direto.")  
+                print("📄 [STEP 5] 📄 Arquivo não é ZIP. Tratando como CSV direto.")  
   
                 # ✅ Verifica se é CSV (com conteúdo)  
                 try:  
@@ -202,38 +202,37 @@ async def main():
                     text_content = content.decode('latin1', errors='ignore')  
   
                     if any(',' in line for line in text_content.split('\n')[:5]):  
-                        print("[OK] ✅ Arquivo parece ser CSV válido.")  
+                        print("✅ [STEP 5] ✅ Arquivo parece ser CSV válido.")  
                     else:  
-                        print("[WARNING] ⚠️ Arquivo NÃO parece ser CSV. Pode ser PDF ou erro.")  
+                        print("⚠️ [STEP 5] ⚠️ Arquivo NÃO parece ser CSV. Pode ser PDF ou erro.")  
                         txt_path = f"/tmp/{download.suggested_filename}.txt"  
                         with open(txt_path, "wb") as f:  
                             f.write(content)  
-                        print(f"[INFO] 📝 Salvando conteúdo como: {txt_path}")  
+                        print(f"📝 [STEP 5] 📝 Salvando conteúdo como: {txt_path}")  
                         return  
   
-                    # Salva o arquivo (já feito acima)  
                     # Renomeia  
                     new_file_path = rename_downloaded_file(DOWNLOAD_DIR, download_path)  
                     if not new_file_path:  
-                        print("[ERROR] ❌ Falha ao renomear o arquivo.")  
+                        print("❌ [STEP 5] ❌ Falha ao renomear o arquivo.")  
                         return  
   
                     # Atualiza Google Sheets  
-                    print("[INFO] 🔄 Atualizando Google Sheets...")  
+                    print("🔄 [STEP 6] 🔄 Atualizando Google Sheets...")  
                     update_packing_google_sheets(new_file_path)  
   
-                    print("[OK] ✅ Dados atualizados com sucesso.")  
+                    print("✅ [STEP 6] ✅ Dados atualizados com sucesso.")  
   
                 except Exception as e:  
-                    print(f"[ERROR] ❌ Erro ao processar arquivo: {e}")  
+                    print(f"❌ [STEP 5] ❌ Erro ao processar arquivo: {e}")  
                     return  
   
         except Exception as e:  
-            print(f"[ERROR] ❌ Erro durante o processo: {e}")  
+            print(f"❌ [ERROR] ❌ Erro durante o processo: {e}")  
         finally:  
-            print("[INFO] 🚪 Fechando o navegador...")  
+            print("🚪 [END] 🚪 Fechando o navegador...")  
             await browser.close()  
-            print("[OK] ✅ Script finalizado.")  
+            print("✅ [END] ✅ Script finalizado.")  
   
 if __name__ == "__main__":  
-    asyncio.run(main())  
+    asyncio.run(main()) 
